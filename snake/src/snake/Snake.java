@@ -16,6 +16,7 @@ import javafx.animation.Interpolator;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PathTransition;
 import javafx.collections.ObservableList;
+import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.effect.Lighting;
 import javafx.scene.paint.Color;
@@ -47,6 +48,25 @@ enum Direction {
 	WEST, EAST, SOUTH, NORTH
 }
 
+class SnakeInterpolator extends Interpolator {
+	
+	private double timeFraction;
+	
+	@Override
+	protected double curve(double t) {
+		
+		this.timeFraction=t;
+		return t;
+	}
+	
+	public double getTimeFraction(){
+		
+		return this.timeFraction;
+	}
+	
+}
+
+
 /**
  * 
  * @author WanX
@@ -65,7 +85,7 @@ public class Snake {
 
 	private Direction direction = Direction.WEST;
 
-	private ParallelTransition snakeTransition = new ParallelTransition();
+	private List<PathTransition> snakeTransition = new ArrayList<PathTransition>();
 
 	public Snake() {
 
@@ -101,25 +121,22 @@ public class Snake {
 			bone.setFill(Color.WHITESMOKE);
 
 			sb.bone = bone;
-			
-			Path path = new Path();
 
-			path.getElements()
-					.add(new MoveTo(sb.bone.getX() + SNAKE_BONE_SIZE / 2, sb.bone.getY() + SNAKE_BONE_SIZE / 2));
+			Path path = new Path();
 
 			PathTransition pathTransition = new PathTransition();
 			pathTransition.setDuration(Duration.millis(SNAKE_INITIAL_DURATION));
 			pathTransition.setPath(path);
 			pathTransition.setNode(sb.bone);
-			pathTransition.setOrientation(PathTransition.OrientationType.ORTHOGONAL_TO_TANGENT);
+			pathTransition.setOrientation(PathTransition.OrientationType.NONE);
 			pathTransition.setCycleCount(1);
 			pathTransition.setAutoReverse(false);
-			pathTransition.setInterpolator(Interpolator.LINEAR);
+			pathTransition.setInterpolator(new SnakeInterpolator());
 
 			sb.transition = pathTransition;
 
 			this.body.add(sb);
-			this.snakeTransition.getChildren().add(pathTransition);
+			this.snakeTransition.add(pathTransition);
 
 		}
 
@@ -174,40 +191,34 @@ public class Snake {
 
 		return group;
 	}
-
+	
 	/**
 	 * 
+	 *  start the animation for going to specified direction
+	 * 
+	 * @param direction
 	 * @return
 	 */
-	protected ParallelTransition getAnimation() {
 
-		ParallelTransition pt = new ParallelTransition();
+	public void goDirection(Direction direction) {
 
-		if (!this.body.isEmpty())
-
-			for (SnakeBone sb : body)
-
-				pt.getChildren().add(sb.transition);
-
-		return pt;
-	}
-
-	public ParallelTransition goDirection(Direction direction) {
-
-		snakeTransition.stop();
+		stop();
+		
 		this.direction = direction;
 
 		double breakPointX = body.get(0).bone.getTranslateX() + body.get(0).bone.getX() + SNAKE_BONE_SIZE / 2;
 		double breakPointY = body.get(0).bone.getTranslateY() + body.get(0).bone.getY() + SNAKE_BONE_SIZE / 2;
 
-		// System.out.println("breakPointX:" + breakPointX);
-		// System.out.println("breakPointY:" + breakPointY);
-
 		double roof = SNAKE_BONE_SIZE / 2;
-
+		
+		//double roof = -1000;
+		
 		double distance = -1;
-
 		double offset = 0;
+		
+		double oldDuration=SNAKE_INITIAL_DURATION;
+		double oldPathLength=SNAKE_INITIAL_POSITION_X;
+		double traveledPathLength=0;
 
 		for (SnakeBone sb : body) {
 
@@ -215,68 +226,125 @@ public class Snake {
 
 			ObservableList<PathElement> pList = path.getElements();
 
-			path.getElements().clear();
+			if (pList.size() == 0)
+				pList.add(new MoveTo(sb.bone.getTranslateX() + sb.bone.getX() + SNAKE_BONE_SIZE / 2,
+						sb.bone.getTranslateY() + sb.bone.getY() + SNAKE_BONE_SIZE / 2));
 
-			pList.add(new MoveTo(sb.bone.getTranslateX() + sb.bone.getX() + SNAKE_BONE_SIZE / 2,
-					sb.bone.getTranslateY() + sb.bone.getY() + SNAKE_BONE_SIZE / 2));
+			oldDuration = sb.transition.getDuration().toMillis();
+			oldPathLength = calculatePathLength(pList);
+			traveledPathLength = ((SnakeInterpolator)sb.transition.getInterpolator()).getTimeFraction()*oldPathLength;
+			
+			PathElement pe = pList.get(pList.size() - 1);
 
-			/*
-			if (pList.get(pList.size() - 1) instanceof LineTo) {
-
-				LineTo lastLineTo = (LineTo) pList.get(pList.size() - 1);
-				lastLineTo.setX(breakPointX);
-				lastLineTo.setY(breakPointY);
-
-			}*/
-
-			if (sb.boneType != BoneType.HEAD)
-				pList.add(new LineTo(breakPointX, breakPointY));
-
+			
 			switch (direction) {
 
 			case NORTH:
+				if (pe instanceof LineTo) {
+					LineTo lastLineTo = (LineTo) pe;
+					lastLineTo.setX(breakPointX);
+				}
 				pList.add(new LineTo(breakPointX, roof));
-				System.out.println("LineTo:" + breakPointX + "," + roof);
-				if (distance < 0)
-					distance = breakPointY;
 				break;
+				
 			case EAST:
+				if (pe instanceof LineTo) {
+					LineTo lastLineTo = (LineTo) pe;
+					lastLineTo.setY(breakPointY);
+				}
 				pList.add(new LineTo(WINDOW_WIDTH + 10 - roof, breakPointY));
-				System.out.println("LineTo:" + (WINDOW_WIDTH + 10 - roof) + "," + breakPointY);
-				if (distance < 0)
-					distance = WINDOW_WIDTH - breakPointX;
 				break;
+				
 			case SOUTH:
+				if (pe instanceof LineTo) {
+					LineTo lastLineTo = (LineTo) pe;
+					lastLineTo.setX(breakPointX);
+				}
 				pList.add(new LineTo(breakPointX, WINDOW_HEIGHT + 10 - roof));
-				System.out.println("LineTo:" + breakPointX + "," + (WINDOW_HEIGHT + 10 - roof));
-				if (distance < 0)
-					distance = WINDOW_HEIGHT - breakPointY;
 				break;
+				
 			case WEST:
+				if (pe instanceof LineTo) {
+					LineTo lastLineTo = (LineTo) pe;
+					lastLineTo.setY(breakPointY);
+				}
 				pList.add(new LineTo(roof, breakPointY));
-				System.out.println("LineTo:" + roof + "," + breakPointY);
-				if (distance < 0)
-					distance = breakPointX;
 				break;
+				
 			default:
 				break;
 
+			}
+			
+			if(traveledPathLength!=0){
+				double newPathLength = calculatePathLength(pList);
+				double newDuration = newPathLength / oldPathLength * oldDuration;
+				
+				System.out.println("Travled : " + traveledPathLength);
+				System.out.println("New path length : " + newPathLength);
+				System.out.println("New duration: " + newDuration);
+				System.out.println("Jump to: " + newDuration * traveledPathLength / newPathLength);
+				
+				sb.transition.jumpTo(Duration.millis(newDuration * traveledPathLength / newPathLength));
+			
+				if (distance < 0)
+					distance = newPathLength;
+				
+				sb.transition.setDuration(Duration.millis(distance / speed));
 			}
 
 			offset = SNAKE_BONE_SIZE + SNAKE_BONE_GAP;
 			roof = roof + offset;
 
-			sb.transition.setDuration(Duration.millis(distance / speed));
-			sb.transition.setPath(path);
-			sb.transition.setNode(sb.bone);
+			
 
 		}
 
-		snakeTransition.play();
-
-		return snakeTransition;
+		play();
 
 	}
+	
+	private void play() {
+		for(PathTransition pt : snakeTransition)
+			pt.play();
+		
+	}
+
+	private void stop() {
+		for(PathTransition pt : snakeTransition)
+			pt.stop();
+	}
+
+	/**
+	 *  calculate the total length of the path
+	 * 
+	 * @param pList
+	 * @return
+	 */
+	private double calculatePathLength(ObservableList<PathElement> pList){
+		
+		double totalLength=0;
+		
+		if(pList.size()>1){
+			
+			MoveTo firstPoint = (MoveTo)pList.get(0);
+			
+			Point2D from = new Point2D(firstPoint.getX(),firstPoint.getY());
+			
+			for(int i = 1; i<pList.size();i++){
+				
+				Point2D to = new Point2D(((LineTo)pList.get(i)).getX(), ((LineTo)pList.get(i)).getY());
+				
+				totalLength = totalLength + from.distance(to);
+				
+				from = to;
+				
+			}
+			
+		}
+		return totalLength;
+	}
+	
 
 	protected void displaySnakeInfo() {
 
