@@ -1,6 +1,13 @@
 package snake;
 
-import static snake.Constants.*;
+import static snake.Constants.SNAKE_BONE_GAP;
+import static snake.Constants.SNAKE_BONE_SIZE;
+import static snake.Constants.SNAKE_INITIAL_DURATION;
+import static snake.Constants.SNAKE_INITIAL_LENGTH;
+import static snake.Constants.SNAKE_INITIAL_POSITION_X;
+import static snake.Constants.SNAKE_INITIAL_POSITION_Y;
+import static snake.Constants.WINDOW_HEIGHT;
+import static snake.Constants.WINDOW_WIDTH;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,14 +15,14 @@ import java.util.List;
 import javafx.animation.Interpolator;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PathTransition;
-import javafx.animation.Transition;
-import javafx.animation.TranslateTransition;
+import javafx.collections.ObservableList;
 import javafx.scene.Group;
 import javafx.scene.effect.Lighting;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
+import javafx.scene.shape.PathElement;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
@@ -29,13 +36,14 @@ class SnakeBone {
 
 	Rectangle bone;
 
-	Transition transition;
+	PathTransition transition;
 
 	BoneType boneType;
 
 }
 
 enum Direction {
+
 	WEST, EAST, SOUTH, NORTH
 }
 
@@ -56,7 +64,7 @@ public class Snake {
 	private double length = SNAKE_INITIAL_LENGTH;
 
 	private Direction direction = Direction.WEST;
-	
+
 	private ParallelTransition snakeTransition = new ParallelTransition();
 
 	public Snake() {
@@ -93,19 +101,25 @@ public class Snake {
 			bone.setFill(Color.WHITESMOKE);
 
 			sb.bone = bone;
+			
+			Path path = new Path();
 
-			/*
-			TranslateTransition tt = new TranslateTransition(Duration.millis(SNAKE_INITIAL_DURATION), bone);
-			tt.setCycleCount(1);
-			tt.setAutoReverse(false);
-			tt.setInterpolator(Interpolator.LINEAR);
+			path.getElements()
+					.add(new MoveTo(sb.bone.getX() + SNAKE_BONE_SIZE / 2, sb.bone.getY() + SNAKE_BONE_SIZE / 2));
 
-			tt.setToX(-SNAKE_INITIAL_POSITION_X);
+			PathTransition pathTransition = new PathTransition();
+			pathTransition.setDuration(Duration.millis(SNAKE_INITIAL_DURATION));
+			pathTransition.setPath(path);
+			pathTransition.setNode(sb.bone);
+			pathTransition.setOrientation(PathTransition.OrientationType.ORTHOGONAL_TO_TANGENT);
+			pathTransition.setCycleCount(1);
+			pathTransition.setAutoReverse(false);
+			pathTransition.setInterpolator(Interpolator.LINEAR);
 
-			sb.transition = tt;
-			*/
+			sb.transition = pathTransition;
 
 			this.body.add(sb);
+			this.snakeTransition.getChildren().add(pathTransition);
 
 		}
 
@@ -180,16 +194,14 @@ public class Snake {
 
 	public ParallelTransition goDirection(Direction direction) {
 
-		// displaySnakeBoneGap();
-
-		snakeTransition.getChildren().clear();
+		snakeTransition.stop();
 		this.direction = direction;
 
 		double breakPointX = body.get(0).bone.getTranslateX() + body.get(0).bone.getX() + SNAKE_BONE_SIZE / 2;
 		double breakPointY = body.get(0).bone.getTranslateY() + body.get(0).bone.getY() + SNAKE_BONE_SIZE / 2;
 
-		//System.out.println("breakPointX:" + breakPointX);
-		//System.out.println("breakPointY:" + breakPointY);
+		// System.out.println("breakPointX:" + breakPointX);
+		// System.out.println("breakPointY:" + breakPointY);
 
 		double roof = SNAKE_BONE_SIZE / 2;
 
@@ -199,38 +211,51 @@ public class Snake {
 
 		for (SnakeBone sb : body) {
 
-			Path path = new Path();
+			Path path = (Path) sb.transition.getPath();
 
-			path.getElements().add(new MoveTo(sb.bone.getTranslateX() + sb.bone.getX() + SNAKE_BONE_SIZE / 2,
+			ObservableList<PathElement> pList = path.getElements();
+
+			path.getElements().clear();
+
+			pList.add(new MoveTo(sb.bone.getTranslateX() + sb.bone.getX() + SNAKE_BONE_SIZE / 2,
 					sb.bone.getTranslateY() + sb.bone.getY() + SNAKE_BONE_SIZE / 2));
 
+			/*
+			if (pList.get(pList.size() - 1) instanceof LineTo) {
+
+				LineTo lastLineTo = (LineTo) pList.get(pList.size() - 1);
+				lastLineTo.setX(breakPointX);
+				lastLineTo.setY(breakPointY);
+
+			}*/
+
 			if (sb.boneType != BoneType.HEAD)
-				path.getElements().add(new LineTo(breakPointX, breakPointY));
+				pList.add(new LineTo(breakPointX, breakPointY));
 
 			switch (direction) {
 
 			case NORTH:
-				path.getElements().add(new LineTo(breakPointX, roof));
+				pList.add(new LineTo(breakPointX, roof));
 				System.out.println("LineTo:" + breakPointX + "," + roof);
-				if(distance<0)
+				if (distance < 0)
 					distance = breakPointY;
 				break;
 			case EAST:
-				path.getElements().add(new LineTo(WINDOW_WIDTH+10 - roof, breakPointY));
-				System.out.println("LineTo:" + (WINDOW_WIDTH+10 - roof) + "," + breakPointY);
-				if(distance<0)
-					distance = WINDOW_WIDTH-breakPointX;
+				pList.add(new LineTo(WINDOW_WIDTH + 10 - roof, breakPointY));
+				System.out.println("LineTo:" + (WINDOW_WIDTH + 10 - roof) + "," + breakPointY);
+				if (distance < 0)
+					distance = WINDOW_WIDTH - breakPointX;
 				break;
 			case SOUTH:
-				path.getElements().add(new LineTo(breakPointX, WINDOW_HEIGHT+10 - roof));
-				System.out.println("LineTo:" + breakPointX + "," + (WINDOW_HEIGHT+10 - roof));
-				if(distance<0)
-					distance = WINDOW_HEIGHT-breakPointY;
+				pList.add(new LineTo(breakPointX, WINDOW_HEIGHT + 10 - roof));
+				System.out.println("LineTo:" + breakPointX + "," + (WINDOW_HEIGHT + 10 - roof));
+				if (distance < 0)
+					distance = WINDOW_HEIGHT - breakPointY;
 				break;
 			case WEST:
-				path.getElements().add(new LineTo(roof, breakPointY));
+				pList.add(new LineTo(roof, breakPointY));
 				System.out.println("LineTo:" + roof + "," + breakPointY);
-				if(distance<0)
+				if (distance < 0)
 					distance = breakPointX;
 				break;
 			default:
@@ -241,23 +266,14 @@ public class Snake {
 			offset = SNAKE_BONE_SIZE + SNAKE_BONE_GAP;
 			roof = roof + offset;
 
-			PathTransition pathTransition = new PathTransition();
-			pathTransition.setDuration(Duration.millis(distance/speed));
-			pathTransition.setPath(path);
-			pathTransition.setNode(sb.bone);
-			pathTransition.setOrientation(PathTransition.OrientationType.ORTHOGONAL_TO_TANGENT);
-			pathTransition.setCycleCount(1);
-			pathTransition.setAutoReverse(false);
-			pathTransition.setInterpolator(Interpolator.LINEAR);
-
-			sb.transition = pathTransition;
-			
-			snakeTransition.getChildren().add(pathTransition);
+			sb.transition.setDuration(Duration.millis(distance / speed));
+			sb.transition.setPath(path);
+			sb.transition.setNode(sb.bone);
 
 		}
 
 		snakeTransition.play();
-		
+
 		return snakeTransition;
 
 	}
