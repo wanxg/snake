@@ -16,6 +16,21 @@ public class Apple extends Rectangle {
 	
 	private Image image;
 	
+	
+	Apple(){
+		
+		super(15,15);
+		try {
+			
+			this.image = new Image(new FileInputStream("apple_15x15.png"));
+			this.setFill(new ImagePattern(this.image));
+			placeToRandomLocation();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
 	Apple(double x, double y){
 		super(15,15);
 		try {
@@ -44,8 +59,6 @@ public class Apple extends Rectangle {
 		
 		double minY = SNAKE_BONE_SIZE / 2;
 		double maxY = WINDOW_HEIGHT - SNAKE_BONE_SIZE / 2;
-		
-		this.setX(2);
 		
 		Random randomGenerator = new Random();
 		

@@ -34,11 +34,9 @@ public class SnakeGame extends Application {
 
 		Snake snake = new Snake();
 
-		Group snakeBoneGroup = snake.getSnakeBoneGroup();
+		root.getChildren().add(snake);
 
-		root.getChildren().add(snakeBoneGroup);
-
-		Apple apple = new Apple(400, 300);
+		Apple apple = new Apple();
 
 		root.getChildren().add(apple);
 
@@ -65,13 +63,12 @@ public class SnakeGame extends Application {
 
 					root.getChildren().remove(apple);
 					apple.placeToRandomLocation();
-					synchronized (apple) {
-						root.getChildren().add(apple);
-					}
+					root.getChildren().add(apple);
+					
 
 				} else {
 					System.out.println("Not colliding");
-					// snake.grow(snakeBoneGroup);
+					snake.grow();
 
 				}
 			}
@@ -85,7 +82,6 @@ public class SnakeGame extends Application {
 
 			case UP:
 
-				System.out.println("UP key pressed");
 				if (snake.isRunning
 						&& (snake.getDirection() == Direction.WEST || snake.getDirection() == Direction.EAST)) {
 					snake.goDirection(Direction.NORTH);
@@ -94,7 +90,6 @@ public class SnakeGame extends Application {
 
 			case DOWN:
 
-				System.out.println("DOWN key pressed");
 				if (snake.isRunning
 						&& (snake.getDirection() == Direction.WEST || snake.getDirection() == Direction.EAST)) {
 					snake.goDirection(Direction.SOUTH);
@@ -103,7 +98,6 @@ public class SnakeGame extends Application {
 
 			case LEFT:
 
-				System.out.println("LEFT key pressed");
 				if (snake.isRunning
 						&& (snake.getDirection() == Direction.NORTH || snake.getDirection() == Direction.SOUTH)) {
 					snake.goDirection(Direction.WEST);
@@ -112,7 +106,6 @@ public class SnakeGame extends Application {
 
 			case RIGHT:
 
-				System.out.println("RIGHT key pressed");
 				if (snake.isRunning
 						&& (snake.getDirection() == Direction.NORTH || snake.getDirection() == Direction.SOUTH)) {
 					snake.goDirection(Direction.EAST);

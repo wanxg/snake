@@ -11,7 +11,7 @@ public class Constants {
 	public static final double SNAKE_BONE_SIZE = 10;
 	public static final double SNAKE_BONE_GAP = 0;
 
-	public static final int SNAKE_INITIAL_LENGTH = 10;
+	public static final int SNAKE_INITIAL_LENGTH = 3;
 	public static final int SNAKE_INITIAL_DURATION = 5000;
 
 }

@@ -17,6 +17,7 @@ import javafx.animation.PathTransition;
 import javafx.collections.ObservableList;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.LineTo;
 import javafx.scene.shape.MoveTo;
@@ -102,11 +103,9 @@ class SnakeInterpolator extends Interpolator {
  *         direction.
  *
  */
-public class Snake {
+public class Snake extends Group {
 	
 	boolean isRunning = false;
-
-	private List<SnakeBone> body = new ArrayList<SnakeBone>();
 
 	private double speed = SNAKE_INITIAL_POSITION_X / SNAKE_INITIAL_DURATION;
 
@@ -117,11 +116,13 @@ public class Snake {
 	private List<PathTransition> snakeTransition = new ArrayList<PathTransition>();
 
 	public Snake() {
+		
+		super();
 
 		double x = SNAKE_INITIAL_POSITION_X;
 		double y = SNAKE_INITIAL_POSITION_Y;
 
-		for (int i = 0; i < SNAKE_INITIAL_LENGTH; i++) {
+		for (int i = 0; i < SNAKE_INITIAL_LENGTH + ((WINDOW_WIDTH*WINDOW_HEIGHT)/(SNAKE_BONE_SIZE*SNAKE_BONE_SIZE)/20); i++) {
 
 			SnakeBone sb = new SnakeBone(x,y);
 
@@ -135,9 +136,11 @@ public class Snake {
 				sb.setId("BODY");
 				sb.boneType = BoneType.BODY;
 			}
-
 			
-			this.body.add(sb);
+			if(i>=SNAKE_INITIAL_LENGTH)
+				sb.setVisible(false);
+
+			this.getChildren().add(sb);
 			this.snakeTransition.add(sb.transition);
 
 			x = x + SNAKE_BONE_SIZE + SNAKE_BONE_GAP;
@@ -157,27 +160,11 @@ public class Snake {
 		return direction;
 	}
 
-	/**
-	 * 
-	 * 
-	 * @return
-	 */
-	protected Group getSnakeBoneGroup() {
-
-		Group group = new Group();
-
-		if (!this.body.isEmpty())
-
-			for (SnakeBone sb : body)
-
-				group.getChildren().add(sb);
-
-		return group;
-	}
+	
 	
 	public SnakeBone getSnakeHead(){
 		
-		return body.get(0);
+		return (SnakeBone) this.getChildren().get(0);
 	}
 
 	/**
@@ -190,10 +177,10 @@ public class Snake {
 
 	public void goDirection(Direction direction) {
 
-		SnakeBone head = body.get(0);
+		SnakeBone head = getSnakeHead();
 
-		if (!isAllowedToGo(head))
-			return;
+//		if (!isAllowedToGo(head))
+//			return;
 
 		stopAnimation();
 
@@ -204,7 +191,7 @@ public class Snake {
 
 		// double roof = SNAKE_BONE_SIZE / 2;
 
-		double roof = -(SNAKE_INITIAL_LENGTH * SNAKE_BONE_SIZE) + SNAKE_BONE_SIZE / 2;
+		double edge = -(SNAKE_INITIAL_LENGTH * SNAKE_BONE_SIZE) + SNAKE_BONE_SIZE / 2;
 
 		double distance = -1;
 		double offset = 0;
@@ -213,10 +200,12 @@ public class Snake {
 		double oldPathLength = SNAKE_INITIAL_POSITION_X;
 		double traveledPathLength = 0;
 
-		double newPathLength = breakPointX - roof;
+		double newPathLength = breakPointX - edge;
 		double newDuration = newPathLength * speed;
 
-		for (SnakeBone sb : body) {
+		for (Node node : this.getChildren()) {
+			
+			SnakeBone sb = (SnakeBone)node;
 
 			ObservableList<PathElement> pList = ((Path) sb.transition.getPath()).getElements();
 
@@ -230,45 +219,45 @@ public class Snake {
 			traveledPathLength = ((SnakeInterpolator) sb.transition.getInterpolator()).getTimeFraction()
 					* oldPathLength;
 
-			PathElement pe = pList.get(pList.size() - 1);
+			PathElement endPoint = pList.get(pList.size() - 1);
 
 			switch (direction) {
 
 			case NORTH:
 
-				if (pe instanceof LineTo) {
-					LineTo lastLineTo = (LineTo) pe;
+				if (endPoint instanceof LineTo) {
+					LineTo lastLineTo = (LineTo) endPoint;
 					lastLineTo.setX(breakPointX);
 					lastLineTo.setY(breakPointY);
 				}
-				pList.add(new LineTo(breakPointX, roof));
+				pList.add(new LineTo(breakPointX, edge));
 				break;
 
 			case EAST:
-				if (pe instanceof LineTo) {
-					LineTo lastLineTo = (LineTo) pe;
+				if (endPoint instanceof LineTo) {
+					LineTo lastLineTo = (LineTo) endPoint;
 					lastLineTo.setX(breakPointX);
 					lastLineTo.setY(breakPointY);
 				}
-				pList.add(new LineTo(WINDOW_WIDTH + 10 - roof, breakPointY));
+				pList.add(new LineTo(WINDOW_WIDTH + 10 - edge, breakPointY));
 				break;
 
 			case SOUTH:
-				if (pe instanceof LineTo) {
-					LineTo lastLineTo = (LineTo) pe;
+				if (endPoint instanceof LineTo) {
+					LineTo lastLineTo = (LineTo) endPoint;
 					lastLineTo.setX(breakPointX);
 					lastLineTo.setY(breakPointY);
 				}
-				pList.add(new LineTo(breakPointX, WINDOW_HEIGHT + 10 - roof));
+				pList.add(new LineTo(breakPointX, WINDOW_HEIGHT + 10 - edge));
 				break;
 
 			case WEST:
-				if (pe instanceof LineTo) {
-					LineTo lastLineTo = (LineTo) pe;
+				if (endPoint instanceof LineTo) {
+					LineTo lastLineTo = (LineTo) endPoint;
 					lastLineTo.setX(breakPointX);
 					lastLineTo.setY(breakPointY);
 				}
-				pList.add(new LineTo(roof, breakPointY));
+				pList.add(new LineTo(edge, breakPointY));
 				break;
 
 			default:
@@ -295,7 +284,7 @@ public class Snake {
 			sb.transition.setDuration(Duration.millis(distance / speed));
 
 			offset = SNAKE_BONE_SIZE + SNAKE_BONE_GAP;
-			roof = roof + offset;
+			edge = edge + offset;
 		}
 
 		playAnimation();
@@ -304,50 +293,66 @@ public class Snake {
 	}
 	
 	
-	public void grow(Group snakeBoneGroup){
+	public void grow(){
 		
 		
-		SnakeBone oldTail = body.get(body.size()-1);
-		
-		//MoveTo start = (MoveTo)((Path)oldTail.transition.getPath()).getElements().get(0);    
-				
-		oldTail.setId("BODY");
-		oldTail.boneType = BoneType.BODY;
-		
-		double x = oldTail.getX() + SNAKE_BONE_SIZE + SNAKE_BONE_GAP;
-		double y = oldTail.getY();
-		
-		SnakeBone newTail = new SnakeBone(x,y);
-		newTail.setId("TAIL");
-		newTail.boneType = BoneType.TAIL;
-		
-		ObservableList<PathElement> pList = ((Path)newTail.transition.getPath()).getElements();
-		
-		for(PathElement pe : ((Path)oldTail.transition.getPath()).getElements()){
+		for (Node node : this.getChildren()) {
 			
-			if(pe instanceof MoveTo){
-				
-				MoveTo start = (MoveTo)pe; 
-				
-				MoveTo newStart = new MoveTo();
-				
-				newStart.setX(start.getX() + SNAKE_BONE_SIZE / 2);
-				newStart.setY(start.getY() + SNAKE_BONE_SIZE / 2);
-				
-				pList.add(newStart);
-				
+			SnakeBone sb = (SnakeBone)node;
+			
+			if(sb.isVisible())
+				continue;
+			else{
+				sb.setVisible(true);
+				break;
 			}
-			
-			else 
-				pList.add(pe);
 		}
-
-		this.body.add(newTail);
-		this.snakeTransition.add(newTail.transition);
 		
-		snakeBoneGroup.getChildren().add(newTail);
 		
-		goDirection(this.direction);
+		
+//		//pauseAnimation();
+//		
+//		SnakeBone oldTail = (SnakeBone)this.getChildren().get(this.getChildren().size()-1);
+//		
+//		//MoveTo start = (MoveTo)((Path)oldTail.transition.getPath()).getElements().get(0);    
+//				
+//		oldTail.setId("BODY");
+//		oldTail.boneType = BoneType.BODY;
+//		
+//		double x = oldTail.getX() + SNAKE_BONE_SIZE + SNAKE_BONE_GAP;
+//		double y = oldTail.getY();
+//		
+//		SnakeBone newTail = new SnakeBone(x,y);
+//		newTail.setId("TAIL");
+//		newTail.boneType = BoneType.TAIL;
+//		
+//		newTail.transition.setInterpolator(oldTail.transition.getInterpolator());
+//		
+//		ObservableList<PathElement> pList = ((Path)newTail.transition.getPath()).getElements();
+//		
+//		for(PathElement pe : ((Path)oldTail.transition.getPath()).getElements()){
+//			
+//			if(pe instanceof MoveTo){
+//				
+//				MoveTo newStart = new MoveTo();
+//				
+//				newStart.setX(newTail.getX() + SNAKE_BONE_SIZE / 2);
+//				newStart.setY(newTail.getY() + SNAKE_BONE_SIZE / 2);
+//				
+//				pList.add(newStart);
+//				
+//			}
+//			
+//			else 
+//				pList.add(pe);
+//		}
+//
+//		this.getChildren().add(newTail);
+//		this.snakeTransition.add(newTail.transition);
+//		
+//		//this.getChildren().add(newTail);
+//		
+//		goDirection(this.direction);
 		
 	}
 	
@@ -436,7 +441,9 @@ public class Snake {
 
 		System.out.println("Snake moving direction : " + getDirection());
 
-		for (SnakeBone sb : body) {
+		for (Node node: this.getChildren()) {
+			
+			SnakeBone sb = (SnakeBone)node;
 			System.out.println("Bone type : " + sb.boneType);
 			System.out.println(sb.getTranslateX() + ", " + sb.getTranslateY());
 		}
@@ -451,8 +458,9 @@ public class Snake {
 
 		int count = 1;
 
-		for (SnakeBone sb : body) {
+		for (Node node : this.getChildren()) {
 
+			SnakeBone sb = (SnakeBone)node;
 			if (previous == null)
 				previous = sb;
 
